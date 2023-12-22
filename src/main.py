@@ -16,5 +16,9 @@ client1.publish("test_topic", "Hello from client 1")
 client1.publish("other_topic", "Hello from client 1, I'm not subscribed here")
 
 client2.unsubscribe("test_topic")
+try:
+    client2.unsubscribe("test_topic")
+except Warning as w:
+    print(w)
 
 client1.publish("test_topic", "Hello again from client 1, bye bye to client 2")

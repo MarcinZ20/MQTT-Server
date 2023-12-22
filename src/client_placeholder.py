@@ -1,10 +1,10 @@
-# from topic_manager import TopicManager
+from topic_manager import TopicManager
+from client import Client
 
 
-class ClientPlaceholder:
-    def __init__(self, username: str, password: str, manager):
-        self.username = username
-        self.password = password
+class ClientPlaceholder(Client):
+    def __init__(self, username: str, password: str, manager: TopicManager):
+        super().__init__(username, password)
         self.manager = manager
 
     def notify(self, message: str):

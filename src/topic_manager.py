@@ -1,5 +1,5 @@
 from topic import Topic
-from client_placeholder import ClientPlaceholder
+from client import Client
 import re
 
 
@@ -8,13 +8,13 @@ class TopicManager:
     Class used to manage access to topics. Use it as a wrapper for Topic methods.
     """
     def __init__(self):
-        self.topics: dict[str, Topic] = dict()
+        self._topics: dict[str, Topic] = dict()
 
     def _create_topic(self, topic_name: str):
-        if topic_name in self.topics.keys():
-            raise RuntimeWarning(f"Topic: {topic_name} already exists")  # Probably shouldn't get here?
+        if topic_name in self._topics.keys():
+            raise RuntimeWarning(f"Warning: Topic: {topic_name} already exists")  # Probably shouldn't get here?
         else:
-            self.topics[topic_name] = Topic(topic_name)
+            self._topics[topic_name] = Topic(topic_name)
 
     def publish_to_topic(self, topic_structure: str, message: str):
         """
@@ -26,16 +26,16 @@ class TopicManager:
         :return:
         """
         topic_matched = False
-        for topic_name in self.topics.keys():
+        for topic_name in self._topics.keys():
             if TopicManager._matches_name_with_structure(topic_name, topic_structure):
-                self.topics[topic_name].publish(message)
+                self._topics[topic_name].publish(message)
                 topic_matched = True
 
         if not topic_matched and TopicManager._is_valid_topic_name(topic_structure):
             self._create_topic(topic_structure)
             self.publish_to_topic(topic_structure, message)
 
-    def subscribe_to_topic(self, topic_structure: str, client: ClientPlaceholder):
+    def subscribe_to_topic(self, topic_structure: str, client: Client):
         """
         Subscribes client to every topic matching given topic_structure. \\
         If no topic is found, and topic_structure is a valid topic name - it creates and subscribes to a new topic
@@ -44,16 +44,16 @@ class TopicManager:
         :return:
         """
         topic_matched = False
-        for topic_name in self.topics.keys():
+        for topic_name in self._topics.keys():
             if TopicManager._matches_name_with_structure(topic_name, topic_structure):
-                self.topics[topic_name].subscribe(client)
+                self._topics[topic_name].subscribe(client)
                 topic_matched = True
 
         if not topic_matched and TopicManager._is_valid_topic_name(topic_structure):
             self._create_topic(topic_structure)
             self.subscribe_to_topic(topic_structure, client)
 
-    def unsubscribe_from_topic(self, topic_structure: str, client: ClientPlaceholder):
+    def unsubscribe_from_topic(self, topic_structure: str, client: Client):
         """
         Unsubscribes client from every topic matching topic_structure. Raises warning when no topic matched
         :param topic_structure: used to match to topic name
@@ -62,13 +62,13 @@ class TopicManager:
         :return:
         """
         topic_matched = False
-        for topic_name in self.topics.keys():
+        for topic_name in self._topics.keys():
             if TopicManager._matches_name_with_structure(topic_name, topic_structure):
-                self.topics[topic_name].unsubscribe(client)
+                self._topics[topic_name].unsubscribe(client)
                 topic_matched = True
 
         if not topic_matched:
-            raise Warning(f"No topic matching structure {topic_structure} exists")
+            raise Warning(f"Warning: No topic matching structure {topic_structure} exists")
 
     @staticmethod
     def _is_valid_topic_name(topic_name: str) -> bool:
