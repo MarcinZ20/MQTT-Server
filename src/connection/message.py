@@ -168,8 +168,8 @@ class ConnAckMessage(Message):
         remaining_length = 2
         packed += remaining_length.to_bytes()
 
-        reserves_values = 0
-        packed += reserves_values.to_bytes()
+        reserved_values = 0
+        packed += reserved_values.to_bytes()
 
         packed += self.return_code.to_bytes()
 
