@@ -57,7 +57,9 @@ class Server:
         except Exception as e:
             print(traceback.format_exc(), file=sys.stderr)
         finally:
-            await client.close()
+            if not client.is_closed():
+                await client.close()
+
             try:
                 self._client_tasks.remove(task)
             except KeyError:

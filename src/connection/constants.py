@@ -3,6 +3,7 @@ from enum import IntEnum
 PROTOCOL_NAME = 'MQIsdp'
 PROTOCOL_VERSION = 3
 MAXIMUM_PACKET_SIZE = 268435455
+MAXIMUM_CLIENT_ID_LENGTH = 23
 
 
 class MessageType(IntEnum):

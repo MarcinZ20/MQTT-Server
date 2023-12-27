@@ -3,17 +3,30 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from io import BytesIO
 
-from src.connection.constants import PROTOCOL_NAME, PROTOCOL_VERSION, MessageType, ConnectReturnCode
+from src.connection.constants import (
+    PROTOCOL_NAME,
+    PROTOCOL_VERSION,
+    MAXIMUM_CLIENT_ID_LENGTH,
+    MessageType,
+    ConnectReturnCode
+)
 from src.connection.structs import (
     FIXED_HEADER,
     CONNECT_FLAGS,
-    unpack_string
+    BYTE_ORDER,
+    unpack_string, read_remaining_length, pack_remaining_length
 )
 from src.exceptions.connection import (
     MalformedPacketError,
     IdentifierRejectedError,
     UnacceptableProtocolVersionError
 )
+
+
+@dataclass
+class RequestedTopic:
+    topic_name: str
+    qos: int
 
 
 @dataclass
@@ -45,18 +58,7 @@ class Message(ABC):
         buffer = await reader.readexactly(1)
         header = Header.from_bytes(buffer)
 
-        remaining_length = 0
-        multiplier = 1
-        digit = 128
-
-        while digit & 128:
-            try:
-                digit = (await reader.readexactly(1))[0]
-            except asyncio.IncompleteReadError:
-                raise MalformedPacketError('Header incomplete')
-
-            remaining_length += (digit & 127) * multiplier
-            multiplier *= 128
+        remaining_length = await read_remaining_length(reader)
 
         # data - variable header and payload
         try:
@@ -103,19 +105,19 @@ class ConnectMessage(Message):
         if protocol_name != PROTOCOL_NAME:
             raise MalformedPacketError('Invalid protocol name')
 
-        protocol_version = int.from_bytes(data.read(1))
+        protocol_version = int.from_bytes(data.read(1), BYTE_ORDER)
         if protocol_version != PROTOCOL_VERSION:
             raise UnacceptableProtocolVersionError('Invalid protocol version')
 
         connect_flags = data.read(1)
         user_name_flag, password_flag, will_retain, will_qos, will_flag, clean_session, _ = CONNECT_FLAGS.unpack(connect_flags)
 
-        keep_alive = int.from_bytes(data.read(2))
+        keep_alive = int.from_bytes(data.read(2), BYTE_ORDER)
         client_id = unpack_string(data)
         if not client_id:
             raise IdentifierRejectedError('Client Identifier too short')
 
-        if len(client_id) > 23:
+        if len(client_id) > MAXIMUM_CLIENT_ID_LENGTH:
             raise IdentifierRejectedError('Client Identifier too long')
 
         will_topic = None
@@ -166,12 +168,12 @@ class ConnAckMessage(Message):
         packed = self.header.pack()
 
         remaining_length = 2
-        packed += remaining_length.to_bytes()
+        packed += remaining_length.to_bytes(1, BYTE_ORDER)
 
         reserved_values = 0
-        packed += reserved_values.to_bytes()
+        packed += reserved_values.to_bytes(1, BYTE_ORDER)
 
-        packed += self.return_code.to_bytes()
+        packed += self.return_code.to_bytes(1, BYTE_ORDER)
 
         return packed
 
@@ -210,13 +212,56 @@ class PubCompMessage(Message):
 @dataclass
 class SubscribeMessage(Message):
     """Subscribe message."""
-    pass
+
+    header: Header
+    message_id: int
+    requested_topics: list[RequestedTopic]
+
+    @classmethod
+    def from_data(cls, header: Header, data: BytesIO) -> 'SubscribeMessage':
+        """Creates the SUBSCRIBE message object from the given header and data."""
+
+        message_id = int.from_bytes(data.read(2), BYTE_ORDER)
+
+        topics = []
+        data_length = len(data.getbuffer())
+        while data.tell() < data_length:
+            topic_name = unpack_string(data)
+            qos = int.from_bytes(data.read(1), BYTE_ORDER)
+            topics.append(RequestedTopic(topic_name, qos))
+
+        return cls(header, message_id, topics)
+
+    def pack(self) -> bytes:
+        pass  # Not required for the server implementation
 
 
 @dataclass
 class SubAckMessage(Message):
     """Subscribe Acknowledgment message."""
-    pass
+
+    header: Header
+    message_id: int
+    granted_qos: list[int]
+
+    @classmethod
+    def from_data(cls, header: Header, data: BytesIO) -> 'SubAckMessage':
+        pass  # Not required for the server implementation
+
+    def pack(self) -> bytes:
+        """Packs the message into a bytes object."""
+
+        packed = self.header.pack()
+
+        remaining_length = 2 + len(self.granted_qos)
+        packed += pack_remaining_length(remaining_length)
+
+        packed += self.message_id.to_bytes(2, BYTE_ORDER)
+
+        for qos in self.granted_qos:
+            packed += qos.to_bytes(1, BYTE_ORDER)
+
+        return packed
 
 
 @dataclass
@@ -234,7 +279,17 @@ class UnsubAckMessage(Message):
 @dataclass
 class PingReqMessage(Message):
     """Ping Request message."""
-    pass
+
+    header: Header
+
+    @classmethod
+    def from_data(cls, header: Header, data: BytesIO) -> 'PingReqMessage':
+        """Creates the PINGREQ message object from the given header and data."""
+
+        return cls(header)
+
+    def pack(self) -> bytes:
+        pass  # Not required for the server implementation
 
 
 @dataclass
