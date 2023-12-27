@@ -1,4 +1,5 @@
-import AuthModule.Auth as Auth
+from src import Auth
+
 
 def test_authenticate():
     """Test for authenticate method"""
