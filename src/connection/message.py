@@ -267,13 +267,42 @@ class SubAckMessage(Message):
 @dataclass
 class UnsubscribeMessage(Message):
     """Unsubscribe message."""
-    pass
+    header: Header
+    message_id: int
+    topics: list[str]
+
+    @classmethod
+    def from_data(cls, header: Header, data: BytesIO) -> 'UnsubscribeMessage':
+        message_id = int.from_bytes(data.read(2), BYTE_ORDER)
+        topics = []
+        data_length = len(data.getbuffer())
+        while data.tell() < data_length:
+            topic_name = unpack_string(data)
+            topics.append(topic_name)
+
+        return cls(header, message_id, topics)
+
+    def pack(self) -> bytes:
+        pass  # Not required for the server implementation
 
 
 @dataclass
 class UnsubAckMessage(Message):
     """Unsubscribe Acknowledgment message."""
-    pass
+    header: Header
+    message_id: int
+    @classmethod
+    def from_data(cls, header: Header, data: BytesIO) -> 'UnsubAckMessage':
+        pass  # Not required for the server implementation
+
+    def pack(self) -> bytes:
+        """Packs the message into a bytes object."""
+        packed = self.header.pack()
+        remaining_length = 2
+        packed += pack_remaining_length(remaining_length)
+        packed += self.message_id.to_bytes(2, BYTE_ORDER)
+
+        return packed
 
 
 @dataclass
@@ -301,7 +330,14 @@ class PingRespMessage(Message):
 @dataclass
 class DisconnectMessage(Message):
     """Client is disconnecting message."""
-    pass
+    header: Header
+
+    @classmethod
+    def from_data(cls, header: Header, data: BytesIO) -> 'DisconnectMessage':
+        return cls(header)
+
+    def pack(self) -> bytes:
+        pass # Not required for the server implementation
 
 
 MESSAGE_CLASSES: dict[MessageType, type[Message]] = {
