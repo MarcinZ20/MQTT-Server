@@ -182,13 +182,45 @@ class ConnAckMessage(Message):
 @dataclass
 class PublishMessage(Message):
     """Publish message."""
-    pass
+    header: Header
+    message_id: int
+    topic_name: str
+    payload: bytes
+
+    @classmethod
+    def from_data(cls, header: Header, data: BytesIO) -> 'PublishMessage':
+        message_id = int.from_bytes(data.read(2), BYTE_ORDER)
+        topic_name = unpack_string(data)
+        payload = data.read()
+
+        return cls(header, message_id, topic_name, payload)
+    
+    def pack(self) -> bytes:
+        pass # Not required for the server implementation
 
 
 @dataclass
 class PubAckMessage(Message):
     """Publish Acknowledgement message."""
-    pass
+
+    header: Header
+    message_id: int
+
+    @classmethod
+    def from_data(cls, header: Header, data: BytesIO) -> 'PubAckMessage':
+        pass # Not required for the server implementation
+
+    def pack(self) -> bytes:
+        """Packs the message into a bytes object."""
+
+        packed = self.header.pack()
+
+        remaining_length = 2
+        packed += pack_remaining_length(remaining_length)
+
+        packed += self.message_id.to_bytes(2, BYTE_ORDER)
+
+        return packed
 
 
 @dataclass
@@ -324,7 +356,17 @@ class PingReqMessage(Message):
 @dataclass
 class PingRespMessage(Message):
     """Ping Response message."""
-    pass
+
+    header: Header
+
+    @classmethod
+    def from_data(cls, header: Header, data: BytesIO) -> 'PingRespMessage':
+        """Creates the PINGRESP message object from the given header and data."""
+        
+        return cls(header)
+    
+    def pack(self) -> bytes:
+        pass # Not required for the server implementation
 
 
 @dataclass
