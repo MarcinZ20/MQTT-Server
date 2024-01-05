@@ -183,7 +183,6 @@ class PublishMessage(Message):
     """Publish message."""
 
     header: Header
-
     topic_name: str
     message_id: int
     payload: bytes
@@ -319,6 +318,7 @@ class SubAckMessage(Message):
 @dataclass
 class UnsubscribeMessage(Message):
     """Unsubscribe message."""
+
     header: Header
     message_id: int
     topics: list[str]
@@ -341,14 +341,17 @@ class UnsubscribeMessage(Message):
 @dataclass
 class UnsubAckMessage(Message):
     """Unsubscribe Acknowledgment message."""
+
     header: Header
     message_id: int
+
     @classmethod
     def from_data(cls, header: Header, data: BytesIO) -> 'UnsubAckMessage':
         pass  # Not required for the server implementation
 
     def pack(self) -> bytes:
         """Packs the message into a bytes object."""
+
         packed = self.header.pack()
         remaining_length = 2
         packed += pack_remaining_length(remaining_length)

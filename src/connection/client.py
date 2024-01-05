@@ -13,7 +13,10 @@ from src.connection.message import (
     UnsubscribeMessage,
     PublishMessage,
     PingReqMessage,
-    DisconnectMessage, PubAckMessage, PingRespMessage
+    DisconnectMessage,
+    PubAckMessage,
+    PingRespMessage,
+    UnsubAckMessage
 )
 from src.exceptions.connection import IdentifierRejectedError, UnacceptableProtocolVersionError
 
@@ -97,7 +100,7 @@ class Client:
         try:
             connect_message = await Message.from_reader(self._reader)
             if not isinstance(connect_message, ConnectMessage):
-                return False # TODO: probably don't return here
+                return False  # TODO: probably don't return here
 
             if self._auth_required:
                 if not connect_message.user_name or not connect_message.password:
@@ -129,7 +132,6 @@ class Client:
     async def _on_subscribe(self, message: SubscribeMessage):
         """Handles an incoming SUBSCRIBE message."""
 
-        # TODO: subscribe to the topics
         for topic in message.requested_topics:
             self.server.topic_manager.subscribe_to_topic(topic.topic_name, self)
 
@@ -143,14 +145,21 @@ class Client:
     async def _on_unsubscribe(self, message: UnsubscribeMessage):
         """Handles an incoming UNSUBSCRIBE message."""
 
-        # TODO: implement
+        log.debug(f'Received UNSUBSCRIBE from {self._address}')
+
+        for topic in message.topics:
+            self.server.topic_manager.unsubscribe_from_topic(topic, self)
+
+        unsuback_message = UnsubAckMessage(Header(MessageType.UNSUBACK), message.message_id)
+
+        await self._send_message(unsuback_message)
 
     async def _on_publish(self, message: PublishMessage):
         """Handles an incoming PUBLISH message."""
 
         log.debug(f'Received PUBLISH from {self._address}')
 
-        self.server.topic_manager.publish_to_topic(message)
+        await self.server.topic_manager.publish_to_topic(message)
 
         qos = message.header.qos
         if not qos:
@@ -177,7 +186,11 @@ class Client:
     async def _on_disconnect(self, message: DisconnectMessage):
         """Handles an incoming DISCONNECT message."""
 
-        # TODO: implement
+        log.debug(f'Received DISCONNECT from {self._address}')
+
+        # TODO: clean session/retain?
+
+        await self.close()
 
     async def _send_message(self, message: Message):
         """Sends a message to the client."""
