@@ -4,6 +4,7 @@ import sys
 import traceback
 
 from src.connection.client import Client
+from src.processing.topic_manager import TopicManager
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -19,6 +20,7 @@ class Server:
     def __init__(self, users: list[tuple[str, str]]):  # TODO: update this to use the auth module
         self._client_tasks: set[asyncio.Task] = set()
         self.users = users
+        self.topic_manager = TopicManager()
 
     def run(self):
         """Starts the server."""

@@ -1,4 +1,4 @@
-from topic_manager import TopicManager
+from src.processing.topic_manager import TopicManager
 from client import Client
 
 

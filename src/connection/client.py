@@ -13,7 +13,7 @@ from src.connection.message import (
     UnsubscribeMessage,
     PublishMessage,
     PingReqMessage,
-    DisconnectMessage
+    DisconnectMessage, PubAckMessage, PingRespMessage
 )
 from src.exceptions.connection import IdentifierRejectedError, UnacceptableProtocolVersionError
 
@@ -37,6 +37,9 @@ class Client:
         self._writer = writer
         self._auth_required = auth_required
 
+        ip, port = self._writer.get_extra_info('peername')
+        self._address = f'{ip}:{port}'
+
         self._closed = False
 
         self._actions: dict[MessageType, Callable] = {
@@ -47,11 +50,21 @@ class Client:
             MessageType.DISCONNECT: self._on_disconnect
         }
 
+    async def notify(self, message: PublishMessage):
+        """Notifies the client."""
+
+        await self._send_message(message)
+
+    def subscribe(self, topic_structure: str):
+        self.server.topic_manager.subscribe_to_topic(topic_structure, self)
+
+    def unsubscribe(self, topic_structure: str):
+        self.server.topic_manager.unsubscribe_from_topic(topic_structure, self)
+
     async def serve(self):
         """Serves the client connection."""
 
-        address = self._writer.get_extra_info('peername')
-        log.info(f'New client connection from {address[0]}:{address[1]}')
+        log.info(f'New client connection from {self._address}')
 
         connected = await self._connect()
         if not connected:
@@ -117,6 +130,8 @@ class Client:
         """Handles an incoming SUBSCRIBE message."""
 
         # TODO: subscribe to the topics
+        for topic in message.requested_topics:
+            self.server.topic_manager.subscribe_to_topic(topic.topic_name, self)
 
         granted_qos = [topic.qos for topic in message.requested_topics]
 
@@ -133,12 +148,31 @@ class Client:
     async def _on_publish(self, message: PublishMessage):
         """Handles an incoming PUBLISH message."""
 
-        # TODO: implement
+        log.debug(f'Received PUBLISH from {self._address}')
+
+        self.server.topic_manager.publish_to_topic(message)
+
+        qos = message.header.qos
+        if not qos:
+            return
+
+        # PUBACK
+        if qos == 1:
+            puback_message = PubAckMessage(Header(MessageType.PUBACK), message.message_id)
+
+            await self._send_message(puback_message)
+        # PUBREC
+        else:
+            pass  # TODO: implement PUBREC response
 
     async def _on_ping(self, message: PingReqMessage):
         """Handles an incoming PINGREQ message."""
 
-        # TODO: implement
+        log.debug(f'Received PING from {self._address}')
+
+        ping_message = PingRespMessage(Header(MessageType.PINGRESP))
+
+        await self._send_message(ping_message)
 
     async def _on_disconnect(self, message: DisconnectMessage):
         """Handles an incoming DISCONNECT message."""

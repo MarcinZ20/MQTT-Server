@@ -1,5 +1,5 @@
-from topic import Topic
-from client import Client
+from src.processing.topic import Topic
+from src.connection.client import Client
 import re
 
 

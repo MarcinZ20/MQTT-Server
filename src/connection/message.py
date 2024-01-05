@@ -14,7 +14,7 @@ from src.connection.structs import (
     FIXED_HEADER,
     CONNECT_FLAGS,
     BYTE_ORDER,
-    unpack_string, read_remaining_length, pack_remaining_length
+    unpack_string, read_remaining_length, pack_remaining_length, pack_string
 )
 from src.exceptions.connection import (
     MalformedPacketError,
@@ -178,25 +178,41 @@ class ConnAckMessage(Message):
         return packed
 
 
-# TODO: implement the other message classes
 @dataclass
 class PublishMessage(Message):
     """Publish message."""
+
     header: Header
-    message_id: int
+
     topic_name: str
+    message_id: int
     payload: bytes
 
     @classmethod
     def from_data(cls, header: Header, data: BytesIO) -> 'PublishMessage':
-        message_id = int.from_bytes(data.read(2), BYTE_ORDER)
+        """Creates the PUBLISH message object from the given header and data."""
+
         topic_name = unpack_string(data)
+        message_id = int.from_bytes(data.read(2), BYTE_ORDER)
+
         payload = data.read()
 
-        return cls(header, message_id, topic_name, payload)
+        return cls(header, topic_name, message_id, payload)
     
     def pack(self) -> bytes:
-        pass # Not required for the server implementation
+        """Packs the message into a bytes object."""
+
+        packed = self.header.pack()
+
+        # every string is 2 + its length, message id is length 2
+        remaining_length = 2 + len(self.topic_name) + 2 + len(self.payload)
+        packed += pack_remaining_length(remaining_length)
+
+        packed += pack_string(self.topic_name)
+        packed += self.message_id.to_bytes(2, BYTE_ORDER)
+        packed += self.payload
+
+        return packed
 
 
 @dataclass
@@ -208,7 +224,11 @@ class PubAckMessage(Message):
 
     @classmethod
     def from_data(cls, header: Header, data: BytesIO) -> 'PubAckMessage':
-        pass # Not required for the server implementation
+        """Creates the PUBACK message object from the given header and data."""
+
+        message_id = int.from_bytes(data.read(2), BYTE_ORDER)
+
+        return cls(header, message_id)
 
     def pack(self) -> bytes:
         """Packs the message into a bytes object."""
