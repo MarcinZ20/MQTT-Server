@@ -4,7 +4,16 @@ from src.connection.message import *
 import re
 
 
-class TopicManager:
+class Singleton(type):
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+        return cls._instances[cls]
+
+
+class TopicManager(metaclass=Singleton):
     """
     Class used to manage access to topics. Use it as a wrapper for Topic methods.
     """
