@@ -1,5 +1,6 @@
 from src.processing.topic import Topic
 from src.connection.client import Client
+from src.connection.message import *
 import re
 
 
@@ -17,23 +18,24 @@ class TopicManager:
         else:
             self._topics[topic_name] = Topic(topic_name)
 
-    def publish_to_topic(self, topic_name: str, message: str):
+    async def publish_to_topic(self, message: PublishMessage):
         """
         Publishes message to given topic, creates on if such doesn't exist
         """
+        topic_name = message.topic_name
         topic_matched = False
         if TopicManager._is_valid_topic_name(topic_name):
             if topic_name in self._topics.keys():
                 for client, topic_structure in self._wildcards_subscriptions:
                     self.subscribe_to_topic(topic_structure, client)
-                self._topics[topic_name].publish(message)
+                await self._topics[topic_name].publish(message)
                 topic_matched = True
 
             if not topic_matched:
                 self._create_topic(topic_name)
                 for client, topic_structure in self._wildcards_subscriptions:
                     self.subscribe_to_topic(topic_structure, client)
-                self.publish_to_topic(topic_name, message)
+                await self.publish_to_topic(message)
 
     def subscribe_to_topic(self, topic_structure: str, client: Client):
         """
