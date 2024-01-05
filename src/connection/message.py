@@ -389,12 +389,19 @@ class PingRespMessage(Message):
         return cls(header)
     
     def pack(self) -> bytes:
-        pass # Not required for the server implementation
+        """Packs the message into a bytes object."""
+
+        packed = self.header.pack()
+        remaining_length = 0
+        packed += pack_remaining_length(remaining_length)
+
+        return packed
 
 
 @dataclass
 class DisconnectMessage(Message):
     """Client is disconnecting message."""
+
     header: Header
 
     @classmethod
@@ -402,7 +409,7 @@ class DisconnectMessage(Message):
         return cls(header)
 
     def pack(self) -> bytes:
-        pass # Not required for the server implementation
+        pass  # Not required for the server implementation
 
 
 MESSAGE_CLASSES: dict[MessageType, type[Message]] = {

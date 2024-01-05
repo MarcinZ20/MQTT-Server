@@ -6,8 +6,8 @@ class Topic:
     def __init__(self, topic_name: str):
         self.topic_name: str = topic_name
         self.subscribed_clients: set[Client] = set()
-        self.messages: list[Message] = []
-        self.retained_message: Message = Message()
+        # self.messages: list[Message] = []
+        # self.retained_message: Message = Message()
 
     async def publish(self, message: PublishMessage):
         for client in self.subscribed_clients:
