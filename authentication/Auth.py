@@ -2,7 +2,7 @@ import hashlib
 import binascii
 import os 
 
-from src.authentication import AuthConfig, AuthExceptions
+from authentication import AuthConfig, AuthExceptions
 
 
 class Auth:

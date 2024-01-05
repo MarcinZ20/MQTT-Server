@@ -3,23 +3,26 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from io import BytesIO
 
-from src.connection.constants import (
+from exceptions.connection import (
+    MalformedPacketError,
+    IdentifierRejectedError,
+    UnacceptableProtocolVersionError
+)
+from .constants import (
     PROTOCOL_NAME,
     PROTOCOL_VERSION,
     MAXIMUM_CLIENT_ID_LENGTH,
     MessageType,
     ConnectReturnCode
 )
-from src.connection.structs import (
+from .structs import (
     FIXED_HEADER,
     CONNECT_FLAGS,
     BYTE_ORDER,
-    unpack_string, read_remaining_length, pack_remaining_length, pack_string
-)
-from src.exceptions.connection import (
-    MalformedPacketError,
-    IdentifierRejectedError,
-    UnacceptableProtocolVersionError
+    unpack_string,
+    read_remaining_length,
+    pack_remaining_length,
+    pack_string
 )
 
 

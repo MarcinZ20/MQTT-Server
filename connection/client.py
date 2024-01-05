@@ -2,8 +2,8 @@ import asyncio
 import logging
 from typing import TYPE_CHECKING, Callable
 
-from src.connection.constants import ConnectReturnCode, MessageType
-from src.connection.message import (
+from .constants import ConnectReturnCode, MessageType
+from .message import (
     Header,
     Message,
     ConnectMessage,
@@ -18,10 +18,10 @@ from src.connection.message import (
     PingRespMessage,
     UnsubAckMessage
 )
-from src.exceptions.connection import IdentifierRejectedError, UnacceptableProtocolVersionError
+from exceptions.connection import IdentifierRejectedError, UnacceptableProtocolVersionError
 
 if TYPE_CHECKING:
-    from src.connection.server import Server
+    from .server import Server
 
 
 log = logging.getLogger(__name__)

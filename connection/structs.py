@@ -4,7 +4,7 @@ from typing import Literal
 
 import bitstruct
 
-from src.exceptions.connection import MalformedPacketError
+from exceptions.connection import MalformedPacketError
 
 FIXED_HEADER = bitstruct.compile('u4u1u2u1')
 CONNECT_FLAGS = bitstruct.compile('u1u1u1u2u1u1u1')

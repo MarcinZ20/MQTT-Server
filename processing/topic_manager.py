@@ -1,7 +1,8 @@
-from src.processing.topic import Topic
-from src.connection.client import Client
-from src.connection.message import *
 import re
+
+from connection import Client
+from connection.message import PublishMessage
+from processing.topic import Topic
 
 
 class Singleton(type):

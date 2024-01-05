@@ -1,5 +1,5 @@
-from src.connection.client import Client
-from src.connection.message import *
+from connection import Client
+from connection.message import PublishMessage
 
 
 class Topic:
