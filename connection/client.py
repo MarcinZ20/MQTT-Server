@@ -33,15 +33,14 @@ class Client:
         server: 'Server',
         reader: asyncio.StreamReader,
         writer: asyncio.StreamWriter,
-        auth_required: bool
+        auth_required: bool,
+        address: str
     ):
         self.server = server
         self._reader = reader
         self._writer = writer
         self._auth_required = auth_required
-
-        ip, port = self._writer.get_extra_info('peername')
-        self._address = f'{ip}:{port}'
+        self._address = address
 
         self._closed = False
 

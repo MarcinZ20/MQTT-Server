@@ -20,6 +20,7 @@ class Server:
     def __init__(self, users: list[tuple[str, str]], auth: bool):  # TODO: update this to use the auth module
         self._client_tasks: set[asyncio.Task] = set()
         self.users = users
+        self.clients: dict[str, Client] = dict()
         self.topic_manager = TopicManager()
         self._auth = auth
 
@@ -30,6 +31,15 @@ class Server:
             asyncio.run(self._start())
         except KeyboardInterrupt:
             return
+
+    def get_client(self, reader, writer, auth, address):
+        client = self.clients.get(address)
+        if client:
+            return client
+        else:
+            new_client = Client(self, reader, writer, auth, address)
+            self.clients[address] = new_client
+            return new_client
 
     async def _start(self):
         """The async startup function."""
@@ -49,7 +59,10 @@ class Server:
         task = asyncio.current_task()
         self._client_tasks.add(task)
 
-        client = Client(self, reader, writer, self._auth)
+        ip, port = writer.get_extra_info('peername')
+        address = f'{ip}:{port}'
+
+        client = self.get_client(reader, writer, self._auth, address)
 
         try:
             await client.serve()
