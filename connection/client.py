@@ -57,8 +57,8 @@ class Client:
 
         await self._send_message(message)
 
-    def subscribe(self, topic_structure: str):
-        self.server.topic_manager.subscribe_to_topic(topic_structure, self)
+    async def subscribe(self, topic_structure: str):
+        await self.server.topic_manager.subscribe_to_topic(topic_structure, self)
 
     def unsubscribe(self, topic_structure: str):
         self.server.topic_manager.unsubscribe_from_topic(topic_structure, self)
@@ -131,7 +131,7 @@ class Client:
         """Handles an incoming SUBSCRIBE message."""
 
         for topic in message.requested_topics:
-            self.server.topic_manager.subscribe_to_topic(topic.topic_name, self)
+            await self.server.topic_manager.subscribe_to_topic(topic.topic_name, self)
 
         granted_qos = [topic.qos for topic in message.requested_topics]
 
