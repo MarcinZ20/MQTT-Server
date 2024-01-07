@@ -5,7 +5,6 @@ import traceback
 import os
 
 from authentication.Auth import Auth
-from config import create_passwd_file
 from processing import TopicManager
 from dotenv import load_dotenv
 
@@ -33,7 +32,7 @@ class Server:
         if self._auth:
             log.info('Authentication is enabled')
             self.auth_module = Auth(os.getenv('PASSWD_FILE_PATH'))
-            create_passwd_file(self.auth_module)
+            self.auth_module.create_passwd_file()
 
     def run(self):
         """Starts the server."""

@@ -1,12 +1,16 @@
 import binascii
 import hashlib
 import os
-
 from pathlib import Path
+
+from dotenv import load_dotenv
+
+from config import users
 from exceptions.authentication import (PasswdFileNotExistException,
                                        PasswordIncorrectException,
                                        UserNotExistException)
 
+load_dotenv()
 
 class Auth:
     """Class for authentication process
@@ -48,10 +52,10 @@ class Auth:
             bool: True if user is authenticated
         """
         if not self.__isUserExist(username):
-            raise UserNotExistException(username)
-
+            return False
+        
         if not self.__isPasswordCorrect(username, password):
-            raise PasswordIncorrectException(username)
+            return False
 
         return True
     
@@ -64,10 +68,11 @@ class Auth:
         Returns:
             bool: True if user exist
         """
-        with open(self.passwdFilePath, 'r') as passwdFile:
-            for line in passwdFile:
-                if line.startswith(username):
-                    return True
+    
+        for user in self.get_users():
+            if user[0] == username:
+                return True
+            
         return False
     
     def __isPasswordCorrect(self, username: str, password: str) -> bool:
@@ -80,11 +85,12 @@ class Auth:
         Returns:
             bool: True if password is correct
         """
-        with open(self.passwdFilePath, 'r') as passwdFile:
-            for line in passwdFile:
-                if line.startswith(username):
-                    hashedPassword = line.split(':')[1]
-                    return self.hashPassword(password) == hashedPassword
+        
+        for user in self.get_users():
+            if user[0] == username:
+                if user[1].rstrip() == self.hashPassword(password):
+                    return True
+
         return False
 
     def hashPassword(self, password: str) -> str:
@@ -119,4 +125,19 @@ class Auth:
                 username = line.split(':')[0]
                 password = line.split(':')[1]
                 users.append((username, password))
+                
         return users
+    
+    def create_passwd_file(self) -> None:
+        """Create passwd file if not exist
+        """
+        # If file exists, clear it - else, create it
+        if Path(os.getenv('PASSWD_FILE_PATH')).expanduser().stat().st_size > 0:
+            open(Path(os.getenv('PASSWD_FILE_PATH')).expanduser(), "w").close()
+        else:
+            Path(os.getenv('PASSWD_FILE_PATH')).expanduser().touch()
+
+        # Write users to file
+        with open(Path(os.getenv('PASSWD_FILE_PATH')).expanduser(), "w") as passwdFile:
+            for user in users:
+                passwdFile.write(f"{user.username}:{self.hashPassword(user.password)}\n")
