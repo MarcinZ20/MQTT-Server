@@ -2,9 +2,13 @@ import asyncio
 import logging
 import sys
 import traceback
+import os
 
 from authentication.Auth import Auth
+from config import create_passwd_file
 from processing import TopicManager
+from dotenv import load_dotenv
+
 from .client import Client
 
 logging.basicConfig(
@@ -16,6 +20,7 @@ logging.basicConfig(
 
 log = logging.getLogger(__name__)
 
+load_dotenv()
 
 class Server:
     def __init__(self, auth: bool):
@@ -27,7 +32,8 @@ class Server:
 
         if self._auth:
             log.info('Authentication is enabled')
-            self.auth_module = Auth()
+            self.auth_module = Auth(os.getenv('PASSWD_FILE_PATH'))
+            create_passwd_file(self.auth_module)
 
     def run(self):
         """Starts the server."""

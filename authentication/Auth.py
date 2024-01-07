@@ -1,8 +1,8 @@
 import binascii
 import hashlib
 import os
-from pathlib import Path
 
+from pathlib import Path
 from exceptions.authentication import (PasswdFileNotExistException,
                                        PasswordIncorrectException,
                                        UserNotExistException)
@@ -11,15 +11,18 @@ from exceptions.authentication import (PasswdFileNotExistException,
 class Auth:
     """Class for authentication process
 
+    Args:
+        passwdFilePath (str, optional): path to passwd file. Defaults to None.
+
     Raises:
         AuthExceptions.UserNotExistException: When user does not exist
         AuthExceptions.PasswordIncorrectException: When password is incorrect
 
     Returns:
-        _type_: _description_
+        bool: True if user is authenticated
     """
 
-    def __init__(self, passwdFilePath: str = "~/.mqtt_passwd"):
+    def __init__(self, passwdFilePath: str = None):
         self.passwdFilePath = Path(passwdFilePath).expanduser()
         self.__salt = self.__generateSalt()
 
@@ -29,9 +32,6 @@ class Auth:
             \n----------------\n
             Passwd file path: {self.passwdFilePath}\n
             """
-    
-    def passwdFilePath(self) -> str:
-        return self.passwdFilePath
 
     def authenticate(self, username: str, password: str) -> bool:
         """Authenticate user
@@ -83,11 +83,11 @@ class Auth:
         with open(self.passwdFilePath, 'r') as passwdFile:
             for line in passwdFile:
                 if line.startswith(username):
-                    hashedPassword = line.split(':')[2]
-                    return self.__hashPassword(password) == hashedPassword
+                    hashedPassword = line.split(':')[1]
+                    return self.hashPassword(password) == hashedPassword
         return False
 
-    def __hashPassword(self, password: str) -> str:
+    def hashPassword(self, password: str) -> str:
         """Hash password with sha256
 
         Args:
