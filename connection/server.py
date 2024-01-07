@@ -5,7 +5,6 @@ import traceback
 
 from authentication.Auth import Auth
 from processing import TopicManager
-
 from .client import Client
 
 logging.basicConfig(
@@ -19,17 +18,16 @@ log = logging.getLogger(__name__)
 
 
 class Server:
-    def __init__(self, users: list[tuple[str, str]], auth: bool):  # TODO: update this to use the auth module
-        self._auth = auth
+    def __init__(self, auth: bool):
         self._client_tasks: set[asyncio.Task] = set()
+        self._clients: dict[str, Client] = dict()
         self.topic_manager = TopicManager()
+        self._auth = auth
+        self._message_count = 0
 
         if self._auth:
             log.info('Authentication is enabled')
             self.auth_module = Auth()
-            self.users = self.auth_module.get_users()
-        else:
-            self.users = users
 
     def run(self):
         """Starts the server."""
@@ -38,6 +36,28 @@ class Server:
             asyncio.run(self._start())
         except KeyboardInterrupt:
             return
+
+    def get_next_message_id(self) -> int:
+        """Gets a message id for the next message."""
+
+        self._message_count += 1
+        return self._message_count
+
+    def _get_client(
+        self,
+        reader: asyncio.StreamReader,
+        writer: asyncio.StreamWriter,
+        auth: bool,
+        address: str
+    ) -> Client:
+        """Gets the client object in case a disconnect happened or creates a new one."""
+
+        client = self._clients.get(address)
+        if client is None:
+            client = Client(self, reader, writer, auth, address)
+            self._clients[address] = client
+
+        return client
 
     async def _start(self):
         """The async startup function."""
@@ -57,7 +77,10 @@ class Server:
         task = asyncio.current_task()
         self._client_tasks.add(task)
 
-        client = Client(self, reader, writer, self._auth)
+        ip, port = writer.get_extra_info('peername')
+        address = f'{ip}:{port}'
+
+        client = self._get_client(reader, writer, self._auth, address)
 
         try:
             await client.serve()

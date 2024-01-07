@@ -12,3 +12,7 @@ class UnacceptableProtocolVersionError(MalformedPacketError):
 
 class IdentifierRejectedError(MQTTConnectionError):
     pass
+
+
+class GracePeriodExceededError(MQTTConnectionError):
+    pass

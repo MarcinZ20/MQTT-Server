@@ -6,7 +6,7 @@ from io import BytesIO
 from exceptions.connection import (
     MalformedPacketError,
     IdentifierRejectedError,
-    UnacceptableProtocolVersionError
+    UnacceptableProtocolVersionError, GracePeriodExceededError
 )
 from .constants import (
     PROTOCOL_NAME,
@@ -55,10 +55,16 @@ class Message(ABC):
     header: Header
 
     @classmethod
-    async def from_reader(cls, reader: asyncio.StreamReader) -> 'Message':
+    async def from_reader(cls, reader: asyncio.StreamReader, keep_alive: int = None) -> 'Message':
         """Creates a message object from a reader stream."""
 
-        buffer = await reader.readexactly(1)
+        grace_period = int(keep_alive * 1.5) if keep_alive else None
+
+        try:
+            buffer = await asyncio.wait_for(reader.readexactly(1), grace_period)
+        except asyncio.TimeoutError:
+            raise GracePeriodExceededError('No message from client within 1.5 x keep alive')
+
         header = Header.from_bytes(buffer)
 
         remaining_length = await read_remaining_length(reader)

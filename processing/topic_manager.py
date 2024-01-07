@@ -28,7 +28,7 @@ class TopicManager(metaclass=Singleton):
         else:
             self._topics[topic_name] = Topic(topic_name)
 
-    async def publish_to_topic(self, message: PublishMessage):
+    async def publish(self, message: PublishMessage):
         """
         Publishes message to given topic, creates on if such doesn't exist
         """
@@ -45,7 +45,7 @@ class TopicManager(metaclass=Singleton):
                 self._create_topic(topic_name)
                 for client, topic_structure in self._wildcards_subscriptions:
                     await self.subscribe_to_topic(topic_structure, client)
-                await self.publish_to_topic(message)
+                await self.publish(message)
 
     async def subscribe_to_topic(self, topic_structure: str, client: Client):
         """

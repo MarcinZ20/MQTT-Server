@@ -2,6 +2,12 @@ import asyncio
 import logging
 from typing import TYPE_CHECKING, Callable
 
+from exceptions.connection import (
+    IdentifierRejectedError,
+    UnacceptableProtocolVersionError,
+    MalformedPacketError,
+    GracePeriodExceededError
+)
 from .constants import ConnectReturnCode, MessageType
 from .message import (
     Header,
@@ -18,7 +24,7 @@ from .message import (
     PingRespMessage,
     UnsubAckMessage
 )
-from exceptions.connection import IdentifierRejectedError, UnacceptableProtocolVersionError
+from .structs import pack_string
 
 if TYPE_CHECKING:
     from .server import Server
@@ -33,17 +39,22 @@ class Client:
         server: 'Server',
         reader: asyncio.StreamReader,
         writer: asyncio.StreamWriter,
-        auth_required: bool
+        auth_required: bool,
+        address: str
     ):
         self.server = server
         self._reader = reader
         self._writer = writer
         self._auth_required = auth_required
-
-        ip, port = self._writer.get_extra_info('peername')
-        self._address = f'{ip}:{port}'
-
+        self._address = address
         self._closed = False
+
+        self._keep_alive = None
+        self._clean_session = None
+        self._will_retain = None
+        self._will_qos = None
+        self._will_topic = None
+        self._will_message = None
 
         self._actions: dict[MessageType, Callable] = {
             MessageType.SUBSCRIBE: self._on_subscribe,
@@ -75,7 +86,23 @@ class Client:
             return
 
         while True:
-            message = await Message.from_reader(self._reader)
+            try:
+                message = await Message.from_reader(self._reader, self._keep_alive)
+            except (MalformedPacketError, GracePeriodExceededError):
+                log.debug(f'Disconnecting {self._address} because of a malformed packet or exceeded grace period')
+
+                if self._will_message is not None:
+                    will_publish_message = PublishMessage(
+                        Header(MessageType.PUBLISH, 0, self._will_qos, self._will_retain),
+                        self._will_topic,
+                        self.server.get_next_message_id(),
+                        pack_string(self._will_message)
+                    )
+
+                    self.server.topic_manager.publish(will_publish_message)
+
+                await self.close()
+                return
             if message is None:
                 log.warning('Received a message but it has not been implemented!')
                 continue
@@ -105,14 +132,15 @@ class Client:
             if self._auth_required:
                 if not connect_message.user_name or not connect_message.password:
                     return_code = ConnectReturnCode.NOT_AUTHORIZED  # TODO: not sure if this is correct
-                else:
-                    # TODO: change this to use the auth module
-                    authorized = self.server.auth_module.authenticate(connect_message.user_name, connect_message.password)
+                elif not self.server.auth_module.authenticate(connect_message.user_name, connect_message.password):
+                    return_code = ConnectReturnCode.BAD_USER_NAME_OR_PASSWORD
 
-                    if not authorized:
-                        return_code = ConnectReturnCode.BAD_USER_NAME_OR_PASSWORD
-
-            # TODO: do something with the remaining attributes of the CONNECT message
+            self._keep_alive = connect_message.keep_alive
+            self._clean_session = connect_message.clean_session
+            self._will_retain = connect_message.will_retain
+            self._will_qos = connect_message.will_qos
+            self._will_topic = connect_message.will_topic
+            self._will_message = connect_message.will_message
         except IdentifierRejectedError:
             return_code = ConnectReturnCode.IDENTIFIER_REJECTED
         except UnacceptableProtocolVersionError:
@@ -155,7 +183,8 @@ class Client:
 
         log.debug(f'Received PUBLISH from {self._address}')
 
-        await self.server.topic_manager.publish_to_topic(message)
+        message.message_id = self.server.get_next_message_id()
+        await self.server.topic_manager.publish(message)
 
         qos = message.header.qos
         if not qos:
@@ -184,7 +213,9 @@ class Client:
 
         log.debug(f'Received DISCONNECT from {self._address}')
 
-        # TODO: clean session/retain?
+        # TODO: retain?
+        if self._clean_session:
+            self.server.topic_manager.clear_session(self)
 
         await self.close()
 
