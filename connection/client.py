@@ -115,7 +115,7 @@ class Client:
 
                     if not authorized:
                         return_code = ConnectReturnCode.BAD_USER_NAME_OR_PASSWORD
-
+            self._clean_session = connect_message.clean_session
             # TODO: do something with the remaining attributes of the CONNECT message
         except IdentifierRejectedError:
             return_code = ConnectReturnCode.IDENTIFIER_REJECTED
@@ -123,7 +123,6 @@ class Client:
             return_code = ConnectReturnCode.UNACCEPTABLE_PROTOCOL_VERSION
 
         log.debug(f'Sending CONNACK with status {return_code.name}')
-
         connack_message = ConnAckMessage(Header(MessageType.CONNACK), return_code)
         await self._send_message(connack_message)
 
@@ -188,7 +187,9 @@ class Client:
 
         log.debug(f'Received DISCONNECT from {self._address}')
 
-        # TODO: clean session/retain?
+        # TODO: retain?
+        if self._clean_session:
+            self.server.topic_manager.clear_session(self)
 
         await self.close()
 
