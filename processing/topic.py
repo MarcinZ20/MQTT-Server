@@ -11,9 +11,10 @@ class Topic:
 
     async def publish(self, message: PublishMessage):
         if message.header.retain:
-            self.retained_message = message
-        for client in self.subscribed_clients:
-            await client.notify(message)
+            self.retained_message = message if message.payload else None
+        else:
+            for client in self.subscribed_clients:
+                await client.notify(message)
 
     async def subscribe(self, client: Client):
         self.subscribed_clients.add(client)
