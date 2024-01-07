@@ -7,16 +7,19 @@ class Topic:
         self.topic_name: str = topic_name
         self.subscribed_clients: set[Client] = set()
         # self.messages: list[Message] = []
-        # self.retained_message: Message = Message()
+        self.retained_message: PublishMessage | None = None
 
     async def publish(self, message: PublishMessage):
+        if message.header.retain:
+            self.retained_message = message
         for client in self.subscribed_clients:
             await client.notify(message)
 
-    def subscribe(self, client: Client):
+    async def subscribe(self, client: Client):
         self.subscribed_clients.add(client)
         # TODO: verify retaining messages
-        # client.notify(self.retained_message)
+        if self.retained_message:
+            await client.notify(self.retained_message)
 
     def unsubscribe(self, client: Client):
         if client in self.subscribed_clients:

@@ -37,17 +37,17 @@ class TopicManager(metaclass=Singleton):
         if TopicManager._is_valid_topic_name(topic_name):
             if topic_name in self._topics.keys():
                 for client, topic_structure in self._wildcards_subscriptions:
-                    self.subscribe_to_topic(topic_structure, client)
+                    await self.subscribe_to_topic(topic_structure, client)
                 await self._topics[topic_name].publish(message)
                 topic_matched = True
 
             if not topic_matched:
                 self._create_topic(topic_name)
                 for client, topic_structure in self._wildcards_subscriptions:
-                    self.subscribe_to_topic(topic_structure, client)
+                    await self.subscribe_to_topic(topic_structure, client)
                 await self.publish_to_topic(message)
 
-    def subscribe_to_topic(self, topic_structure: str, client: Client):
+    async def subscribe_to_topic(self, topic_structure: str, client: Client):
         """
         Subscribes client to every topic matching given topic_structure. \\
         If no topic is found, and topic_structure is a valid topic name - it creates and subscribes to a new topic
@@ -58,12 +58,12 @@ class TopicManager(metaclass=Singleton):
         topic_matched = False
         for topic_name in self._topics.keys():
             if TopicManager._matches_name_with_structure(topic_name, topic_structure):
-                self._topics[topic_name].subscribe(client)
+                await self._topics[topic_name].subscribe(client)
                 topic_matched = True
 
         if not topic_matched and TopicManager._is_valid_topic_name(topic_structure):
             self._create_topic(topic_structure)
-            self.subscribe_to_topic(topic_structure, client)
+            await self.subscribe_to_topic(topic_structure, client)
 
         elif not TopicManager._is_valid_topic_name(topic_structure):
             if "#" in topic_structure:
