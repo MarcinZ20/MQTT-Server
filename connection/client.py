@@ -22,7 +22,10 @@ from .message import (
     DisconnectMessage,
     PubAckMessage,
     PingRespMessage,
-    UnsubAckMessage
+    UnsubAckMessage,
+    PubRecMessage,
+    PubRelMessage,
+    PubCompMessage
 )
 from .structs import pack_string
 
@@ -61,7 +64,9 @@ class Client:
             MessageType.UNSUBSCRIBE: self._on_unsubscribe,
             MessageType.PUBLISH: self._on_publish,
             MessageType.PINGREQ: self._on_ping,
-            MessageType.DISCONNECT: self._on_disconnect
+            MessageType.DISCONNECT: self._on_disconnect,
+            MessageType.PUBREL: self._on_pubrel,
+            MessageType.PUBREC: self._on_pubrec
         }
 
     async def notify(self, message: PublishMessage):
@@ -183,7 +188,6 @@ class Client:
 
         log.debug(f'Received PUBLISH from {self._address}')
 
-        message.message_id = self.server.get_next_message_id()
         await self.server.topic_manager.publish(message)
 
         qos = message.header.qos
@@ -192,12 +196,14 @@ class Client:
 
         # PUBACK
         if qos == 1:
-            puback_message = PubAckMessage(Header(MessageType.PUBACK), message.message_id)
+            puback_message = PubAckMessage(Header(MessageType.PUBACK, qos=1), message.message_id)
 
             await self._send_message(puback_message)
         # PUBREC
         else:
-            pass  # TODO: implement PUBREC response
+            pubrec_message = PubRecMessage(Header(MessageType.PUBREC, qos=2), message.message_id)
+
+            await self._send_message(pubrec_message)
 
     async def _on_ping(self, message: PingReqMessage):
         """Handles an incoming PINGREQ message."""
@@ -207,6 +213,24 @@ class Client:
         ping_message = PingRespMessage(Header(MessageType.PINGRESP))
 
         await self._send_message(ping_message)
+
+    async def _on_pubrel(self, message: PubRelMessage):
+        """Handles an incoming PUBREL message."""
+
+        log.debug(f'Received PUBREL from {self._address}')
+
+        pubcomp_message = PubCompMessage(Header(MessageType.PUBCOMP, qos=2), message.message_id)
+
+        await self._send_message(pubcomp_message)
+
+    async def _on_pubrec(self, message: PubRelMessage):
+        """Handles an incoming PUBREC message."""
+
+        log.debug(f'Received PUBREC from {self._address}')
+
+        pubrel_message = PubRelMessage(Header(MessageType.PUBREL, qos=2), message.message_id)
+
+        await self._send_message(pubrel_message)
 
     async def _on_disconnect(self, message: DisconnectMessage):
         """Handles an incoming DISCONNECT message."""

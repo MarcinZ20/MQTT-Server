@@ -97,6 +97,17 @@ class TopicManager(metaclass=Singleton):
         if not topic_matched:
             raise Warning(f"Warning: No topic matching structure {topic_structure} exists")
 
+    def clear_session(self, client: Client):
+        """Unsubscribe client from all topics. Used with clean_session flag"""
+        for topic_name in self._topics.keys():
+            try:
+                self._topics[topic_name].unsubscribe(client)
+            except Warning:
+                pass
+        self._wildcards_subscriptions = {(sub_client, topic) for sub_client, topic
+                                         in self._wildcards_subscriptions if sub_client != client}
+        return
+
     @staticmethod
     def _is_valid_topic_name(topic_name: str) -> bool:
         """
