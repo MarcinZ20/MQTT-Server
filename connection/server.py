@@ -3,7 +3,9 @@ import logging
 import sys
 import traceback
 
+from authentication.Auth import Auth
 from processing import TopicManager
+
 from .client import Client
 
 logging.basicConfig(
@@ -18,10 +20,16 @@ log = logging.getLogger(__name__)
 
 class Server:
     def __init__(self, users: list[tuple[str, str]], auth: bool):  # TODO: update this to use the auth module
-        self._client_tasks: set[asyncio.Task] = set()
-        self.users = users
-        self.topic_manager = TopicManager()
         self._auth = auth
+        self._client_tasks: set[asyncio.Task] = set()
+        self.topic_manager = TopicManager()
+
+        if self._auth:
+            log.info('Authentication is enabled')
+            self.auth_module = Auth()
+            self.users = self.auth_module.get_users()
+        else:
+            self.users = users
 
     def run(self):
         """Starts the server."""

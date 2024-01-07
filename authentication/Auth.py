@@ -1,8 +1,11 @@
-import hashlib
 import binascii
-import os 
+import hashlib
+import os
+from pathlib import Path
 
-from authentication import AuthConfig, AuthExceptions
+from exceptions.authentication import (PasswdFileNotExistException,
+                                       PasswordIncorrectException,
+                                       UserNotExistException)
 
 
 class Auth:
@@ -16,19 +19,19 @@ class Auth:
         _type_: _description_
     """
 
-    __passwdFilePath = None
-    __salt = None
-
-    def __init__(self):
-        self.__passwdFilePath = AuthConfig.getPasswdFilePath()
+    def __init__(self, passwdFilePath: str = "~/.mqtt_passwd"):
+        self.passwdFilePath = Path(passwdFilePath).expanduser()
         self.__salt = self.__generateSalt()
 
     def __str__(self) -> str:
         return f"""
             Auth module
             \n----------------\n
-            Passwd file path: {self.__passwdFilePath}
+            Passwd file path: {self.passwdFilePath}\n
             """
+    
+    def passwdFilePath(self) -> str:
+        return self.passwdFilePath
 
     def authenticate(self, username: str, password: str) -> bool:
         """Authenticate user
@@ -45,10 +48,10 @@ class Auth:
             bool: True if user is authenticated
         """
         if not self.__isUserExist(username):
-            raise AuthExceptions.UserNotExistException(username)
+            raise UserNotExistException(username)
 
         if not self.__isPasswordCorrect(username, password):
-            raise AuthExceptions.PasswordIncorrectException(username)
+            raise PasswordIncorrectException(username)
 
         return True
     
@@ -61,7 +64,7 @@ class Auth:
         Returns:
             bool: True if user exist
         """
-        with open(self.__passwdFilePath, 'r') as passwdFile:
+        with open(self.passwdFilePath, 'r') as passwdFile:
             for line in passwdFile:
                 if line.startswith(username):
                     return True
@@ -77,7 +80,7 @@ class Auth:
         Returns:
             bool: True if password is correct
         """
-        with open(self.__passwdFilePath, 'r') as passwdFile:
+        with open(self.passwdFilePath, 'r') as passwdFile:
             for line in passwdFile:
                 if line.startswith(username):
                     hashedPassword = line.split(':')[2]
@@ -89,12 +92,11 @@ class Auth:
 
         Args:
             password (str): string with password
-            salt (str): string with salt
 
         Returns:
             str: hashed password
         """
-        return hashlib.sha256((password + self.salt).encode('utf-8')).hexdigest()
+        return hashlib.sha256((password + self.__salt).encode('utf-8')).hexdigest()
 
     def __generateSalt(self) -> str:
         """Generate salt for password hashing
@@ -104,18 +106,17 @@ class Auth:
         """
         return binascii.hexlify(os.urandom(16)).decode('utf-8')
     
-    def __getHashedPassword(self, username: str) -> str:
-        """Get hashed password from passwd file
-
-        Args:
-            username (str): string with username
+    def get_users(self) -> list[tuple[str, str]]:
+        """Get users from passwd file
 
         Returns:
-            str: hashed password
+            list[tuple[str, str]]: list of users
         """
-        with open(self.__passwdFilePath, 'r') as passwdFile:
+        users = []
+        
+        with open(self.passwdFilePath, 'r') as passwdFile:
             for line in passwdFile:
-                if line.startswith(username):
-                    return line.split(':')[2]
-        return None
-    
+                username = line.split(':')[0]
+                password = line.split(':')[1]
+                users.append((username, password))
+        return users

@@ -107,11 +107,7 @@ class Client:
                     return_code = ConnectReturnCode.NOT_AUTHORIZED  # TODO: not sure if this is correct
                 else:
                     # TODO: change this to use the auth module
-                    authorized = False
-                    for user_name, password in self.server.users:
-                        if user_name == connect_message.user_name and password == connect_message.password:
-                            authorized = True
-                            break
+                    authorized = self.server.auth_module.authenticate(connect_message.user_name, connect_message.password)
 
                     if not authorized:
                         return_code = ConnectReturnCode.BAD_USER_NAME_OR_PASSWORD
