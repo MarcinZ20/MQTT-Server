@@ -43,7 +43,9 @@ class Header:
     def from_bytes(cls, data: bytes) -> 'Header':
         """Creates a header object from a bytes buffer."""
 
-        return cls(*FIXED_HEADER.unpack(data))
+        message_type, dup, qos, retain = FIXED_HEADER.unpack(data)
+
+        return cls(MessageType(message_type), dup, qos, retain)
 
     def pack(self) -> bytes:
         """Packs the header into a bytes buffer."""
@@ -193,7 +195,7 @@ class PublishMessage(Message):
 
     header: Header
     topic_name: str
-    message_id: int
+    message_id: int | None
     payload: bytes
 
     @classmethod
@@ -201,7 +203,10 @@ class PublishMessage(Message):
         """Creates the PUBLISH message object from the given header and data."""
 
         topic_name = unpack_string(data)
-        message_id = int.from_bytes(data.read(2), BYTE_ORDER)
+
+        message_id = None
+        if header.qos > 0:
+            message_id = int.from_bytes(data.read(2), BYTE_ORDER)
 
         payload = data.read()
 
@@ -212,12 +217,17 @@ class PublishMessage(Message):
 
         packed = self.header.pack()
 
-        # every string is 2 + its length, message id is length 2
-        remaining_length = 2 + len(self.topic_name) + 2 + len(self.payload)
+        # every string is 2 + its length
+        remaining_length = 2 + len(self.topic_name) + len(self.payload)
+        if self.header.qos > 0:
+            remaining_length += 2  # message id has length 2
+
         packed += pack_remaining_length(remaining_length)
 
         packed += pack_string(self.topic_name)
-        packed += self.message_id.to_bytes(2, BYTE_ORDER)
+        if self.header.qos > 0:
+            packed += self.message_id.to_bytes(2, BYTE_ORDER)
+
         packed += self.payload
 
         return packed
@@ -254,19 +264,86 @@ class PubAckMessage(Message):
 @dataclass
 class PubRecMessage(Message):
     """Publish Received message."""
-    pass
+
+    header: Header
+    message_id: int
+
+    @classmethod
+    def from_data(cls, header: Header, data: BytesIO) -> 'PubRecMessage':
+        """Creates the PUBREC message object from the given header and data."""
+
+        message_id = int.from_bytes(data.read(2), BYTE_ORDER)
+
+        return cls(header, message_id)
+
+    def pack(self) -> bytes:
+        """Packs the message into a bytes object."""
+
+        packed = self.header.pack()
+
+        remaining_length = 2
+        packed += pack_remaining_length(remaining_length)
+
+        packed += self.message_id.to_bytes(2, BYTE_ORDER)
+
+        return packed
+
 
 
 @dataclass
 class PubRelMessage(Message):
     """Publish Released message."""
-    pass
+
+    header: Header
+    message_id: int
+
+    @classmethod
+    def from_data(cls, header: Header, data: BytesIO) -> 'PubRelMessage':
+        """Creates the PUBREL message object from the given header and data."""
+
+        message_id = int.from_bytes(data.read(2), BYTE_ORDER)
+
+        return cls(header, message_id)
+
+    def pack(self) -> bytes:
+        """Packs the message into a bytes object."""
+
+        packed = self.header.pack()
+
+        remaining_length = 2
+        packed += pack_remaining_length(remaining_length)
+
+        packed += self.message_id.to_bytes(2, BYTE_ORDER)
+
+        return packed
 
 
 @dataclass
 class PubCompMessage(Message):
     """Publish Complete message."""
-    pass
+
+    header: Header
+    message_id: int
+
+    @classmethod
+    def from_data(cls, header: Header, data: BytesIO) -> 'PubCompMessage':
+        """Creates the PUBCOMP message object from the given header and data."""
+
+        message_id = int.from_bytes(data.read(2), BYTE_ORDER)
+
+        return cls(header, message_id)
+
+    def pack(self) -> bytes:
+        """Packs the message into a bytes object."""
+
+        packed = self.header.pack()
+
+        remaining_length = 2
+        packed += pack_remaining_length(remaining_length)
+
+        packed += self.message_id.to_bytes(2, BYTE_ORDER)
+
+        return packed
 
 
 @dataclass

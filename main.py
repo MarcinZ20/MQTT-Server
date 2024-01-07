@@ -1,5 +1,5 @@
 from connection import Server
 
-server = Server(auth=True)
+server = Server(auth=False)
 
 server.run()
