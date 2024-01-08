@@ -1,4 +1,4 @@
-from authentication.User import User
+from authentication.user import User
 
 # Add users here
 admin = User("admin", "admin")

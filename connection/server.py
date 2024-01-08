@@ -1,13 +1,13 @@
 import asyncio
 import logging
+import os
 import sys
 import traceback
-import os
 
-from authentication.Auth import Auth
-from processing import TopicManager
 from dotenv import load_dotenv
 
+from authentication.auth import Auth
+from processing import TopicManager
 from .client import Client
 
 logging.basicConfig(

@@ -5,10 +5,8 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from config import users
-from exceptions.authentication import (PasswdFileNotExistException,
-                                       PasswordIncorrectException,
-                                       UserNotExistException)
+import config
+from .user import User
 
 load_dotenv()
 
@@ -16,7 +14,7 @@ class Auth:
     """Class for authentication process
 
     Args:
-        passwdFilePath (str, optional): path to passwd file. Defaults to None.
+        passwd_file_path (str, optional): path to passwd file. Defaults to None.
 
     Raises:
         AuthExceptions.UserNotExistException: When user does not exist
@@ -26,15 +24,15 @@ class Auth:
         bool: True if user is authenticated
     """
 
-    def __init__(self, passwdFilePath: str = None):
-        self.passwdFilePath = Path(passwdFilePath).expanduser()
-        self.__salt = self.__generateSalt()
+    def __init__(self, passwd_file_path: str = None):
+        self.passwd_file_path = Path(passwd_file_path).expanduser()
+        self.__salt = self._generate_salt()
 
     def __str__(self) -> str:
         return f"""
             Auth module
             \n----------------\n
-            Passwd file path: {self.passwdFilePath}\n
+            Passwd file path: {self.passwd_file_path}\n
             """
 
     def authenticate(self, username: str, password: str) -> bool:
@@ -51,15 +49,16 @@ class Auth:
         Returns:
             bool: True if user is authenticated
         """
-        if not self.__isUserExist(username):
+
+        if not self._user_exists(username):
             return False
         
-        if not self.__isPasswordCorrect(username, password):
+        if not self._is_password_correct(username, password):
             return False
 
         return True
     
-    def __isUserExist(self, username: str) -> bool:
+    def _user_exists(self, username: str) -> bool:
         """Check if user exist in passwd file
 
         Args:
@@ -69,13 +68,13 @@ class Auth:
             bool: True if user exist
         """
     
-        for user in self.get_users():
-            if user[0] == username:
+        for user in self._get_users():
+            if user.username == username:
                 return True
             
         return False
     
-    def __isPasswordCorrect(self, username: str, password: str) -> bool:
+    def _is_password_correct(self, username: str, password: str) -> bool:
         """Check if password is correct
 
         Args:
@@ -86,14 +85,13 @@ class Auth:
             bool: True if password is correct
         """
         
-        for user in self.get_users():
-            if user[0] == username:
-                if user[1].rstrip() == self.hashPassword(password):
-                    return True
+        for user in self._get_users():
+            if user.username == username and user.password == self._hash_password(password):
+                return True
 
         return False
 
-    def hashPassword(self, password: str) -> str:
+    def _hash_password(self, password: str) -> str:
         """Hash password with sha256
 
         Args:
@@ -104,7 +102,7 @@ class Auth:
         """
         return hashlib.sha256((password + self.__salt).encode('utf-8')).hexdigest()
 
-    def __generateSalt(self) -> str:
+    def _generate_salt(self) -> str:
         """Generate salt for password hashing
 
         Returns:
@@ -112,25 +110,25 @@ class Auth:
         """
         return binascii.hexlify(os.urandom(16)).decode('utf-8')
     
-    def get_users(self) -> list[tuple[str, str]]:
+    def _get_users(self) -> list[User]:
         """Get users from passwd file
 
         Returns:
             list[tuple[str, str]]: list of users
         """
+
         users = []
-        
-        with open(self.passwdFilePath, 'r') as passwdFile:
-            for line in passwdFile:
-                username = line.split(':')[0]
-                password = line.split(':')[1]
-                users.append((username, password))
-                
+
+        with open(self.passwd_file_path, 'r') as passwd_file:
+            for line in passwd_file:
+                username, password = line.strip().split(':')
+                users.append(User(username, password))
+
         return users
     
     def create_passwd_file(self) -> None:
-        """Create passwd file if not exist
-        """
+        """Create passwd file if not exist"""
+
         # If file exists, clear it - else, create it
         if Path(os.getenv('PASSWD_FILE_PATH')).expanduser().stat().st_size > 0:
             open(Path(os.getenv('PASSWD_FILE_PATH')).expanduser(), "w").close()
@@ -138,6 +136,6 @@ class Auth:
             Path(os.getenv('PASSWD_FILE_PATH')).expanduser().touch()
 
         # Write users to file
-        with open(Path(os.getenv('PASSWD_FILE_PATH')).expanduser(), "w") as passwdFile:
-            for user in users:
-                passwdFile.write(f"{user.username}:{self.hashPassword(user.password)}\n")
+        with open(Path(os.getenv('PASSWD_FILE_PATH')).expanduser(), "w") as passwd_file:
+            for user in config.users:
+                passwd_file.write(f"{user.username}:{self._hash_password(user.password)}\n")
