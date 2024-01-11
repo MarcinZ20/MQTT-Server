@@ -1,5 +1,5 @@
 from connection import Client
-from connection.message import PublishMessage
+from messages import PublishMessage
 
 
 class Topic:
@@ -18,7 +18,7 @@ class Topic:
 
     async def subscribe(self, client: Client):
         self.subscribed_clients.add(client)
-        # TODO: verify retaining messages
+
         if self.retained_message:
             await client.notify(self.retained_message)
 

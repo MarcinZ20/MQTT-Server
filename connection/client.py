@@ -8,8 +8,7 @@ from exceptions.connection import (
     MalformedPacketError,
     GracePeriodExceededError
 )
-from .constants import ConnectReturnCode, MessageType
-from .message import (
+from messages import (
     Header,
     Message,
     ConnectMessage,
@@ -27,7 +26,8 @@ from .message import (
     PubRelMessage,
     PubCompMessage
 )
-from .structs import pack_string
+from messages.structs import pack_string
+from .constants import ConnectReturnCode, MessageType
 
 if TYPE_CHECKING:
     from .server import Server
@@ -132,11 +132,11 @@ class Client:
         try:
             connect_message = await Message.from_reader(self._reader)
             if not isinstance(connect_message, ConnectMessage):
-                return False  # TODO: probably don't return here
+                return False
 
             if self._auth_required:
                 if not connect_message.user_name or not connect_message.password:
-                    return_code = ConnectReturnCode.NOT_AUTHORIZED  # TODO: not sure if this is correct
+                    return_code = ConnectReturnCode.NOT_AUTHORIZED
                 elif not self.server.auth_module.authenticate(connect_message.user_name, connect_message.password):
                     return_code = ConnectReturnCode.BAD_USER_NAME_OR_PASSWORD
 
@@ -237,7 +237,6 @@ class Client:
 
         log.debug(f'Received DISCONNECT from {self._address}')
 
-        # TODO: retain?
         if self._clean_session:
             self.server.topic_manager.clear_session(self)
 

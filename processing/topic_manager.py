@@ -1,7 +1,7 @@
 import re
 
 from connection import Client
-from connection.message import PublishMessage
+from messages import PublishMessage
 from processing.topic import Topic
 
 
@@ -83,11 +83,6 @@ class TopicManager(metaclass=Singleton):
 
         to_remove: set[(Client, str)] = set()
         for client, wildcard_name in self._wildcards_subscriptions:
-            # TODO:
-            #  1. Can unsubscribe message contain wildcards?
-            #  2. What if I subscribe to "test/abc/#" but then unsubscribe from "test/abc/def"
-            #  - would I receive message to every matching topic (eg. "test/abc/xyz") except "test/abc/def"?
-            #  3. What if I subscribe to "test/+/xyz" and then unsubscribe from "test/#"?
             if wildcard_name == topic_structure:
                 to_remove.add((client, wildcard_name))
                 topic_matched = True
