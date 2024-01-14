@@ -74,12 +74,6 @@ class Client:
 
         await self._send_message(message)
 
-    async def subscribe(self, topic_structure: str):
-        await self.server.topic_manager.subscribe_to_topic(topic_structure, self)
-
-    def unsubscribe(self, topic_structure: str):
-        self.server.topic_manager.unsubscribe_from_topic(topic_structure, self)
-
     async def serve(self):
         """Serves the client connection."""
 
@@ -125,7 +119,7 @@ class Client:
     async def _connect(self) -> bool:
         """
         Awaits a CONNECT message from the client and sends a CONNACK.
-        Returns whether the connection was successful.
+        :return: True if connection was successful, False otherwise
         """
 
         return_code = ConnectReturnCode.ACCEPTED
@@ -200,7 +194,7 @@ class Client:
 
             await self._send_message(puback_message)
         # PUBREC
-        else:
+        elif qos == 2:
             pubrec_message = PubRecMessage(Header(MessageType.PUBREC, qos=2), message.message_id)
 
             await self._send_message(pubrec_message)

@@ -3,18 +3,13 @@ import hashlib
 import os
 from pathlib import Path
 
-from dotenv import load_dotenv
-
 import config
+from utils.singleton import Singleton
 from .user import User
 
-load_dotenv()
 
-class Auth:
+class Auth(metaclass=Singleton):
     """Class for authentication process
-
-    Args:
-        passwd_file_path (str, optional): path to passwd file. Defaults to None.
 
     Raises:
         AuthExceptions.UserNotExistException: When user does not exist
@@ -24,8 +19,8 @@ class Auth:
         bool: True if user is authenticated
     """
 
-    def __init__(self, passwd_file_path: str = None):
-        self.passwd_file_path = Path(passwd_file_path).expanduser()
+    def __init__(self):
+        self.passwd_file_path = Path(config.PASSWD_FILE_PATH).expanduser()
         self.__salt = self._generate_salt()
 
     def __str__(self) -> str:
@@ -52,12 +47,12 @@ class Auth:
 
         if not self._user_exists(username):
             return False
-        
+
         if not self._is_password_correct(username, password):
             return False
 
         return True
-    
+
     def _user_exists(self, username: str) -> bool:
         """Check if user exist in passwd file
 
@@ -67,11 +62,11 @@ class Auth:
         Returns:
             bool: True if user exist
         """
-    
+
         for user in self._get_users():
             if user.username == username:
                 return True
-            
+
         return False
     
     def _is_password_correct(self, username: str, password: str) -> bool:
@@ -84,7 +79,7 @@ class Auth:
         Returns:
             bool: True if password is correct
         """
-        
+
         for user in self._get_users():
             if user.username == username and user.password == self._hash_password(password):
                 return True
@@ -100,6 +95,7 @@ class Auth:
         Returns:
             str: hashed password
         """
+
         return hashlib.sha256((password + self.__salt).encode('utf-8')).hexdigest()
 
     def _generate_salt(self) -> str:
@@ -108,6 +104,7 @@ class Auth:
         Returns:
             str: salt
         """
+
         return binascii.hexlify(os.urandom(16)).decode('utf-8')
     
     def _get_users(self) -> list[User]:
@@ -119,7 +116,7 @@ class Auth:
 
         users = []
 
-        with open(self.passwd_file_path, 'r') as passwd_file:
+        with open(self.passwd_file_path) as passwd_file:
             for line in passwd_file:
                 username, password = line.strip().split(':')
                 users.append(User(username, password))
@@ -129,13 +126,15 @@ class Auth:
     def create_passwd_file(self) -> None:
         """Create passwd file if not exist"""
 
+        path = Path(config.PASSWD_FILE_PATH).expanduser()
+
         # If file exists, clear it - else, create it
-        if Path(os.getenv('PASSWD_FILE_PATH')).expanduser().stat().st_size > 0:
-            open(Path(os.getenv('PASSWD_FILE_PATH')).expanduser(), "w").close()
+        if path.stat().st_size > 0:
+            open(path, 'w').close()
         else:
-            Path(os.getenv('PASSWD_FILE_PATH')).expanduser().touch()
+            path.touch()
 
         # Write users to file
-        with open(Path(os.getenv('PASSWD_FILE_PATH')).expanduser(), "w") as passwd_file:
-            for user in config.users:
+        with open(path, 'w') as passwd_file:
+            for user in config.USERS:
                 passwd_file.write(f"{user.username}:{self._hash_password(user.password)}\n")

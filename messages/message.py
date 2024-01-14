@@ -13,29 +13,6 @@ class Message(ABC):
     async def from_reader(cls, reader: asyncio.StreamReader, keep_alive: int = None) -> 'Message':
         """Creates a message object from a reader stream."""
 
-        # grace_period = int(keep_alive * 1.5) if keep_alive else None
-        #
-        # try:
-        #     buffer = await asyncio.wait_for(reader.readexactly(1), grace_period)
-        # except asyncio.TimeoutError:
-        #     raise GracePeriodExceededError('No message from client within 1.5 x keep alive')
-        #
-        # header = Header.from_bytes(buffer)
-        #
-        # remaining_length = await read_remaining_length(reader)
-        #
-        # # data - variable header and payload
-        # try:
-        #     data = await reader.readexactly(remaining_length)
-        # except asyncio.IncompleteReadError:
-        #     raise MalformedPacketError('Data incomplete')
-        #
-        # _class = MESSAGE_CLASSES.get(header.message_type)
-        # if _class is None:
-        #     raise MalformedPacketError('Invalid message type')
-        #
-        # return _class.from_data(header, BytesIO(data))
-
         header_handler = HeaderHandler()
         length_handler = RemainingLengthHandler()
         data_handler = DataHandler()

@@ -1,10 +1,7 @@
 import asyncio
 import logging
-import os
 import sys
 import traceback
-
-from dotenv import load_dotenv
 
 from authentication.auth import Auth
 from processing import TopicManager
@@ -19,7 +16,6 @@ logging.basicConfig(
 
 log = logging.getLogger(__name__)
 
-load_dotenv()
 
 class Server:
     def __init__(self, auth: bool):
@@ -31,7 +27,7 @@ class Server:
 
         if self._auth:
             log.info('Authentication is enabled')
-            self.auth_module = Auth(os.getenv('PASSWD_FILE_PATH'))
+            self.auth_module = Auth()
             self.auth_module.create_passwd_file()
 
     def run(self):

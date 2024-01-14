@@ -1,7 +1,6 @@
 import asyncio
-from abc import ABC, abstractmethod
 from io import BytesIO
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from connection.constants import MessageType
 from exceptions.connection import GracePeriodExceededError, MalformedPacketError
@@ -12,17 +11,7 @@ if TYPE_CHECKING:
     from .message import Message
 
 
-class Handler(ABC):
-    @abstractmethod
-    def set_next(self, handler: 'Handler') -> 'Handler':
-        pass
-
-    @abstractmethod
-    def handle(self, data: Any):
-        pass
-
-
-class AbstractHandler(Handler):
+class AbstractHandler:
     _next_handler: 'AbstractHandler' = None
 
     def set_next(self, handler: 'AbstractHandler') -> 'AbstractHandler':
