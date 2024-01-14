@@ -12,7 +12,7 @@ class TopicManager(metaclass=Singleton):
     """
     def __init__(self):
         self._topics: dict[str, Topic] = dict()
-        self._wildcards_subscriptions: set[(Client, str)] = set()
+        self._wildcards_subscriptions: set[tuple[Client, str]] = set()
 
     def _create_topic(self, topic_name: str):
         if topic_name in self._topics.keys():
