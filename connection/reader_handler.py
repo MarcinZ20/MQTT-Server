@@ -4,11 +4,11 @@ from typing import TYPE_CHECKING
 
 from connection.constants import MessageType
 from exceptions.connection import GracePeriodExceededError, MalformedPacketError
-from .header import Header
-from .structs import read_remaining_length
+from messages.header import Header
+from messages.structs import read_remaining_length
 
 if TYPE_CHECKING:
-    from .message import Message
+    from messages import Message
 
 
 class AbstractHandler:
@@ -72,20 +72,22 @@ class MessageHandler(AbstractHandler):
 def get_message_class(message_type: MessageType) -> type['Message']:
     """Gets the message class based on the message type."""
 
-    from .connack import ConnAckMessage
-    from .connect import ConnectMessage
-    from .disconnect import DisconnectMessage
-    from .pingreq import PingReqMessage
-    from .pingresp import PingRespMessage
-    from .puback import PubAckMessage
-    from .pubcomp import PubCompMessage
-    from .publish import PublishMessage
-    from .pubrec import PubRecMessage
-    from .pubrel import PubRelMessage
-    from .suback import SubAckMessage
-    from .subscribe import SubscribeMessage
-    from .unsuback import UnsubAckMessage
-    from .unsubscribe import UnsubscribeMessage
+    from messages import (
+        ConnectMessage,
+        ConnAckMessage,
+        SubscribeMessage,
+        SubAckMessage,
+        UnsubscribeMessage,
+        PublishMessage,
+        PingReqMessage,
+        DisconnectMessage,
+        PubAckMessage,
+        PingRespMessage,
+        UnsubAckMessage,
+        PubRecMessage,
+        PubRelMessage,
+        PubCompMessage
+    )
 
     messages_classes: dict[MessageType, type['Message']] = {
         MessageType.CONNECT: ConnectMessage,

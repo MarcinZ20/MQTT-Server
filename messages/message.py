@@ -2,8 +2,8 @@ import asyncio
 from abc import ABC, abstractmethod
 from io import BytesIO
 
+from connection.reader_handler import HeaderHandler, RemainingLengthHandler, DataHandler, MessageHandler
 from messages.header import Header
-from .handler import HeaderHandler, RemainingLengthHandler, DataHandler, MessageHandler
 
 
 class Message(ABC):
