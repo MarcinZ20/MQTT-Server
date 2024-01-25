@@ -74,8 +74,8 @@ class TopicManager(metaclass=Singleton):
                 topic_matched = True
 
         to_remove: set[(Client, str)] = set()
-        for client, wildcard_name in self._wildcards_subscriptions:
-            if wildcard_name == topic_structure:
+        for _client, wildcard_name in self._wildcards_subscriptions:
+            if wildcard_name == topic_structure and _client._address == client._address:
                 to_remove.add((client, wildcard_name))
                 topic_matched = True
         for element in to_remove:
